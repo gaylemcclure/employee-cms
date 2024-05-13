@@ -1,9 +1,13 @@
 require("dotenv").config();
 const { Pool } = require("pg");
 const inquirer = require("inquirer");
+//Import the classes
 const SelectData = require("./utils/selectData");
 const CreateData = require("./utils/createData");
 const UpdateData = require("./utils/updateData");
+const DeleteData = require('./utils/deleteData');
+
+//Create the pool instance with env variables
 const pool = new Pool(
   {
     user: process.env.DB_USER,
@@ -14,6 +18,7 @@ const pool = new Pool(
   // console.log("Connected to the company_db database")
 );
 
+//Connect to the pool
 pool.connect();
 
 //List of main questions
@@ -31,15 +36,15 @@ const choices = [
     value: "view_emp",
   },
   {
-    name: "View employees by manager*",
+    name: "View employees by manager",
     value: "view_emp_man",
   },
   {
-    name: "View employees by department*",
+    name: "View employees by department",
     value: "view_emp_dept",
   },
   {
-    name: "View total budget by department*",
+    name: "View total budget by department",
     value: "view_budget",
   },
   {
@@ -59,33 +64,28 @@ const choices = [
     value: "update_role",
   },
   {
-    name: "Update employee manager*",
+    name: "Update employee manager",
     value: "update_manager",
   },
-
   {
-    name: "Delete department*",
+    name: "Delete department",
     value: "delete_dept",
   },
   {
-    name: "Delete role*",
+    name: "Delete role",
     value: "delete_role",
   },
   {
-    name: "Delete employee*",
+    name: "Delete employee",
     value: "delete_emp",
   },
-
   {
     name: "Exit",
     value: "exit",
   },
 ];
 
-//List of add employee inputs
-const employeeInputs = [];
-
-//Function to run the question prompt
+//Main function to run the question prompt
 const questionFunction = async () => {
   let stop = false;
 
@@ -94,9 +94,9 @@ const questionFunction = async () => {
     //Set the main selectors
     const select = new SelectData(pool);
     const create = new CreateData(pool);
+    const deleteRow = new DeleteData(pool);
 
-
-    //async response to wait for answer
+    //async response to wait for answer before asking the prompt question again
     await inquirer
       .prompt([
         {
@@ -111,21 +111,25 @@ const questionFunction = async () => {
         if (answers.options === "exit") {
           stop = true;
         }
+
         //To view all departments
         if (answers.options === "view_dept") {
           const data = await select.viewDepartment();
           console.table(data);
         }
+
         //To view all roles
         if (answers.options === "view_roles") {
           const data = await select.viewRoles();
           console.table(data);
         }
+
         //to view all employees
         if (answers.options === "view_emp") {
           const data = await select.viewEmployees();
           console.table(data);
         }
+
         //to add a new department
         if (answers.options === "add_dept") {
           await inquirer
@@ -138,6 +142,7 @@ const questionFunction = async () => {
               await create.addDepartment(answer.dept_name);
             });
         }
+
         //To add a new role
         if (answers.options === "add_role") {
           //Get the department list via query to show in the list
@@ -162,14 +167,15 @@ const questionFunction = async () => {
                 },
               ])
               .then(async (answer) => {
-                await select.viewDepartment().then(async (data) => {
-                  //call the create role query
-                  const { roleName, salary, department } = answer;
-                  await create.addRole(roleName, salary, department);
-                });
+                // await select.viewDepartment().then(async (data) => {
+                //call the create role query
+                const { roleName, salary, department } = answer;
+                await create.addRole(roleName, salary, department);
+                // });
               });
           });
         }
+
         //Add a new employee
         if (answers.options === "add_emp") {
           //Get the role and employee data to show in the list prompts
@@ -207,6 +213,7 @@ const questionFunction = async () => {
                   },
                 ])
                 .then(async (answer) => {
+                  //Call the add employee function
                   const { firstName, lastName, title, manager } = answer;
                   await create.addEmployee(firstName, lastName, title, manager);
                 });
@@ -216,7 +223,9 @@ const questionFunction = async () => {
         if (answers.options === "update_role") {
           let roles;
           let employees;
+          //Get the list of roles from db
           await select.addEmployeesRole().then((data) => (roles = data));
+          //Get the list of employees from db
           await select
             .addEmployee()
             .then((data) => (employees = data))
@@ -239,10 +248,8 @@ const questionFunction = async () => {
                 ])
                 .then(async (answer) => {
                   const { employee, role } = answer;
-                  console.log(employee);
-                  console.log(role);
+                  //Call the update employee function
                   const update = new UpdateData(pool, employee);
-
                   await update.updateEmployeeRole(role);
                 });
             });
@@ -268,6 +275,7 @@ const questionFunction = async () => {
               });
           });
         }
+
         //View a table of employees by department
         if (answers.options === "view_emp_dept") {
           await select.viewDepartmentsId().then(async (data) => {
@@ -287,6 +295,7 @@ const questionFunction = async () => {
               });
           });
         }
+
         //View the total budget by department
         if (answers.options === "view_budget") {
           await select.viewDepartmentsId().then(async (data) => {
@@ -298,23 +307,26 @@ const questionFunction = async () => {
                 choices: data,
               })
               .then(async (answer) => {
-                await select
-                  .viewBudget(answer.department)
-                  // .then(async (data) => {
-                  //   // console.table(data);
-                  // });
+                await select.viewBudget(answer.department);
               });
           });
         }
+
         //Update an employees manager
         if (answers.options === "update_manager") {
           let managers;
           let employees = [];
           //Get the list of employees
-          await select.viewEmployees().then((data) => (
-            data.map(data => 
-              employees.push({name: `${data.first_name} ${data.last_name}`, value: data.id})
-            )));
+          await select
+            .viewEmployees()
+            .then((data) =>
+              data.map((data) =>
+                employees.push({
+                  name: `${data.first_name} ${data.last_name}`,
+                  value: data.id,
+                })
+              )
+            );
           //Get the list of managers
           await select
             .viewManagers()
@@ -345,24 +357,68 @@ const questionFunction = async () => {
                   await update.updateEmployeeManager(role);
                 });
             });
+        }
+        //Delete a department
+        if (answers.options === "delete_dept") {
+          await select.viewDepartmentsId().then(async (data) => {
+            await inquirer
+              .prompt({
+                type: "list",
+                name: "department",
+                message: "Select the department to delete?",
+                choices: data,
+              })
+              .then(async (answer) => {
+                await deleteRow.deleteDepartment(answer.department);
+              });
+          });
+        }
+
+        //Delete a role
+        if (answers.options === "delete_role") {
+          await select.addEmployeesRole().then(async (data) => {
+            await inquirer
+              .prompt({
+                type: "list",
+                name: "role",
+                message: "Select the role to delete?",
+                choices: data,
+              })
+              .then(async (answer) => {
+                await deleteRow.deleteRole(answer.role);
+              });
+          });
+        }
+
+        //Delete an employee
+        if (answers.options === "delete_emp") {
+          await select.addEmployee().then(async (data) => {
+            data.shift();
+            await inquirer
+              .prompt({
+                type: "list",
+                name: "employee",
+                message: "Select the employee to delete?",
+                choices: data,
+              })
+              .then(async (answer) => {
+                await deleteRow.deleteEmployee(answer.employee);
+              });
+          });
 
         }
-        if (answers.options === "delete_dept") {
-        }
-        if (answers.options === "delete_role") {
-        }
-        if (answers.options === "delete_emp") {
-        }
       })
+      //Error handling
       .catch((error) => {
         if (error.isTtyError) {
-          // Prompt couldn't be rendered in the current environment
+          console.error("Can't render prompt in current environment")
         } else {
-          // Something else went wrong
+          console.error("Unknown error")
+
         }
       });
   }
 };
 
-//Initialise the function
+//Initialise the main function
 questionFunction();
