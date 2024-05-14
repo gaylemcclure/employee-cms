@@ -15,7 +15,6 @@ const pool = new Pool(
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
   }
-  // console.log("Connected to the company_db database")
 );
 
 //Connect to the pool
@@ -169,8 +168,8 @@ const questionFunction = async () => {
               .then(async (answer) => {
                 // await select.viewDepartment().then(async (data) => {
                 //call the create role query
-                const { roleName, salary, department } = answer;
-                await create.addRole(roleName, salary, department);
+                const { roleName, salary, deptName } = answer;
+                await create.addRole(roleName, salary, deptName);
                 // });
               });
           });

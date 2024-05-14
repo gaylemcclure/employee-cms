@@ -29,11 +29,3 @@ CREATE TABLE employee (
     ON DELETE SET NULL
 );
 
--- SELECT * FROM role
---     JOIN employee
---     ON role.id = employee.role_id;
-
-SELECT MAX(id) FROM employee;   
-SELECT nextVal('employee_id_seq');
-
-SELECT setval('employee_id_seq', (SELECT MAX(id) FROM employee)+1);
