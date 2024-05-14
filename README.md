@@ -10,7 +10,7 @@ Video walkthrough:
 
 Screenshots
 ![screenshot](/assets/cms.png)
-![screenshot](/Assets/cms-2.png)
+![screenshot](/assets/cms-2.png)
 
   ## TABLE OF CONTENTS
   
